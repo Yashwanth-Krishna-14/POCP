@@ -27,7 +27,7 @@ const mockSbtDetails = {
   },
   tokenId: "42",
   txHash: "0xabcd...1234",
-  image: "/placeholder.svg?height=300&width=300",
+  image: "https://images.allhomes.com.au/agent/staff/119c09091b53a5b80020c312be4480c2_180x180.jpg",
 }
 
 export default function SbtDetailPage({ params }: { params: { id: string } }) {

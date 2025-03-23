@@ -22,7 +22,7 @@ const mockSbts = [
     type: "author",
     timestamp: "2023-10-15T14:30:00Z",
     verified: true,
-    image: "/placeholder.svg?height=200&width=200",
+    image: "https://img.freepik.com/premium-photo/powerful-female-ceo-with-dark-hairs-confidently-leading-diverse-boardroom-meeting-office_118631-6272.jpg",
   },
   {
     id: "sbt-002",
@@ -31,7 +31,7 @@ const mockSbts = [
     type: "reviewer",
     timestamp: "2023-11-05T09:15:00Z",
     verified: true,
-    image: "/placeholder.svg?height=200&width=200",
+    image: "https://media.istockphoto.com/id/1334205775/photo/employee-solo-performance.jpg?s=170667a&w=0&k=20&c=rJQFP3YcGykSLjP0fxT61Ds-doVqjvdqoaqZcKfc4IM=",
   },
   {
     id: "sbt-003",
@@ -40,7 +40,7 @@ const mockSbts = [
     type: "collaborator",
     timestamp: "2023-12-01T16:45:00Z",
     verified: false,
-    image: "/placeholder.svg?height=200&width=200",
+    image: "https://images.allhomes.com.au/agent/staff/119c09091b53a5b80020c312be4480c2_180x180.jpg",
   },
 ]
 
