@@ -23,16 +23,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle } from "lucide-react";
 import Web3 from "web3";
+import { motion, AnimatePresence } from "framer-motion";
 
 // OpenAlex API Base URL
 const OPENALEX_API_BASE = "https://api.openalex.org/works/";
-
-// Store submitted DOIs locally (In a real-world scenario, use a backend for persistence)
 const submittedDOIs = new Set<string>();
 
-// Form Schema
 const formSchema = z.object({
   doi: z.string().min(5, "DOI must be at least 5 characters."),
   title: z.string().min(5, "Title must be at least 5 characters."),
@@ -64,36 +62,30 @@ export default function SubmitPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [apiTitle, setApiTitle] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
 
-  // React Hook Form
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: { title: "", doi: "", repository: "", abstract: "" },
   });
 
-  // 🔹 Validate DOI and Title using OpenAlex API
   async function checkPaperValidity(doi: string, providedTitle: string) {
     try {
-      // 1️⃣ Prevent duplicate submissions
       if (submittedDOIs.has(doi)) {
         setErrorMessage("This DOI has already been submitted!");
         return false;
       }
 
-      // 2️⃣ Fetch research details from OpenAlex
       const response = await fetch(`${OPENALEX_API_BASE}https://doi.org/${doi}`);
       if (!response.ok) throw new Error("DOI not found in OpenAlex.");
 
       const data = await response.json();
       if (data.id && data.title) {
         setApiTitle(data.title);
-
-        // 3️⃣ Validate if the provided title matches the OpenAlex title
         if (data.title.trim().toLowerCase() !== providedTitle.trim().toLowerCase()) {
-          setErrorMessage(`Title mismatch! Expected title: "${data.title}"`);
+          setErrorMessage(`Title mismatch! Expected: "${data.title}"`);
           return false;
         }
-
         setErrorMessage(null);
         return true;
       } else {
@@ -105,21 +97,16 @@ export default function SubmitPage() {
     }
   }
 
-  // 🔹 Mint SBT Function
   async function mintSBT(title: string, doi: string, repository: string) {
     try {
       if (!window.ethereum) throw new Error("MetaMask is not installed.");
-
       const web3 = new Web3(window.ethereum);
       await window.ethereum.request({ method: "eth_requestAccounts" });
       const accounts = await web3.eth.getAccounts();
       const contract = new web3.eth.Contract(CONTRACT_ABI, CONTRACT_ADDRESS);
-
-      // Call the smart contract function
       const tx = await contract.methods
         .mintSBT(accounts[0], title, doi, repository || "", 0)
         .send({ from: accounts[0] });
-
       return tx.transactionHash;
     } catch (error) {
       console.error("Minting SBT failed:", error);
@@ -127,22 +114,19 @@ export default function SubmitPage() {
     }
   }
 
-  // 🔹 Handle Form Submission
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
+    setShowModal(true);
 
-    // 1️⃣ Validate DOI and Title
     const isValid = await checkPaperValidity(values.doi, values.title);
     if (!isValid) {
       setIsSubmitting(false);
+      setShowModal(false);
       return;
     }
 
-    // 2️⃣ If valid, mint SBT
     try {
       const transactionHash = await mintSBT(values.title, values.doi, values.repository || "");
-
-      // 3️⃣ Store the submitted DOI to prevent duplicate submissions
       submittedDOIs.add(values.doi);
 
       toast({
@@ -153,12 +137,14 @@ export default function SubmitPage() {
       form.reset();
       setErrorMessage(null);
       setApiTitle(null);
+      setShowModal(false);
     } catch (error) {
       toast({
         title: "Minting Failed",
         description: "Transaction could not be processed. Try again.",
         variant: "destructive",
       });
+      setShowModal(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -175,71 +161,47 @@ export default function SubmitPage() {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {/* 🔹 DOI Input */}
-                <FormField
-                  control={form.control}
-                  name="doi"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>DOI</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter DOI (e.g., 10.1234/example)" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <FormField control={form.control} name="doi" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>DOI</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter DOI (e.g., 10.1234/example)" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
 
-                {/* 🔹 Title Input */}
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Research Title</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter title" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <FormField control={form.control} name="title" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Research Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter title" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
 
-                {/* 🔹 Repository Input */}
-                <FormField
-                  control={form.control}
-                  name="repository"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>GitHub / Repository (Optional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter repository link" {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
+                <FormField control={form.control} name="repository" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>GitHub / Repository (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter repository link" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )} />
 
-                {/* 🔹 Abstract Input */}
-                <FormField
-                  control={form.control}
-                  name="abstract"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Abstract / Description</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Brief description" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <FormField control={form.control} name="abstract" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Abstract / Description</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Brief description" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
 
-                {/* 🔹 Display Errors */}
-                {errorMessage && (
-                  <p className="text-red-500 font-semibold">{errorMessage}</p>
-                )}
+                {errorMessage && <p className="text-red-500 font-semibold">{errorMessage}</p>}
 
-                {/* 🔹 Submit Button */}
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <>
@@ -255,6 +217,19 @@ export default function SubmitPage() {
           </CardContent>
         </Card>
       </div>
+
+      <AnimatePresence>
+        {showModal && (
+          <motion.div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <Card className="p-6 text-center max-w-md">
+              <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+              <h2 className="text-lg font-semibold mt-2">Minting SBT...</h2>
+              <p className="text-sm text-gray-500">Your research contribution is being verified and minted.</p>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
